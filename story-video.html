@@ -45,45 +45,95 @@
 <p class="hint">本機免費版：LM Studio 拆腳本 · DrawThings 生圖 · Mac 內建語音唸旁白 · 瀏覽器直接播</p>
 
 <details class="card">
-  <summary>📖 第一次使用？點這裡看完整安裝設定步驟</summary>
-  <h2>① 安裝 LM Studio（拆腳本用）</h2>
+  <summary>📖 第一次使用？點這裡看安裝設定步驟（本機 / 雲端）</summary>
+
+  <h2>方式 A：完全本機（Mac 上跑，免費）</h2>
+  <p style="font-size:14px"><b>① 安裝 LM Studio（拆腳本）</b></p>
   <ol style="font-size:14px; line-height:1.7">
     <li>到 <a href="https://lmstudio.ai/" target="_blank">lmstudio.ai</a> 下載 Mac 版 .dmg，拖進「應用程式」</li>
-    <li>打開 LM Studio → 左邊搜尋 <code>qwen2.5-7b-instruct</code>（或 <code>llama-3.2-3b-instruct</code> 比較輕）→ 下載 <b>Q4_K_M</b> 版本</li>
-    <li>左邊選 <b>Developer</b>（或 <b>Local Server</b>）分頁 → 上面載入剛下載的模型 → 把 <b>Status</b> 切成 <b>Running</b></li>
-    <li>確認下方顯示 <code>http://localhost:1234</code>（這就是 API 位址，下面要填）</li>
+    <li>打開 LM Studio → 左邊搜尋 <code>qwen2.5-7b-instruct</code> → 下載 <b>Q4_K_M</b> 版本</li>
+    <li>左邊 <b>Developer</b> 分頁 → 載入模型 → 把 <b>Status</b> 切到 <b>Running</b>（位址 <code>http://localhost:1234</code>）</li>
   </ol>
-
-  <h2>② 安裝 DrawThings（生圖用）</h2>
+  <p style="font-size:14px"><b>② 安裝 Draw Things（生圖）</b></p>
   <ol style="font-size:14px; line-height:1.7">
     <li>Mac App Store 搜尋 <b>Draw Things</b>，免費安裝</li>
-    <li>打開 App，左側會自動下載預設模型（等它跑完，大約 2–4 GB）</li>
-    <li>選單列 <b>Draw Things → Preferences / Settings → Advanced</b> → 開啟 <b>Enable HTTP Server</b>（或叫 <b>API Server</b>），Port 預設 <code>7860</code></li>
-    <li>確認 App 左下顯示 API 已啟動</li>
+    <li>打開 App，左側會自動下載預設模型</li>
+    <li><b>Settings → Advanced → Enable HTTP Server</b>（Port <code>7860</code>）</li>
   </ol>
 
-  <h2>③ 全部設定完後</h2>
-  <p style="font-size:14px">回到本頁面按下方「檢查連線」按鈕，兩個綠燈都亮就可以開始貼故事了。</p>
+  <h2>方式 B：雲端 GPU（更快，便宜租用）</h2>
+  <ol style="font-size:14px; line-height:1.7">
+    <li>到 <a href="https://www.runpod.io" target="_blank">Runpod</a> / <a href="https://vast.ai" target="_blank">Vast.ai</a> 租 RTX 4090（每小時約 NT$ 15–60）</li>
+    <li>選 <b>AUTOMATIC1111</b> 或 <b>ComfyUI</b> 模板開機</li>
+    <li>啟動時加參數 <code>--cors-allow-origins=*</code> 或 <code>--api</code> 開放跨網域</li>
+    <li>把 Runpod 給你的公開網址（如 <code>https://xxx-7860.proxy.runpod.net</code>）填進下面「圖像生成 API」</li>
+    <li>LLM 同樣可以用雲端 OpenAI / Groq / OpenRouter（要 API key）</li>
+  </ol>
+
+  <h2>方式 C：付費 API（不用任何硬體）</h2>
+  <p style="font-size:14px">直接用 OpenAI、Groq 等 API 拆腳本；圖片可以用 Replicate / fal.ai 跑 SDXL（要改下面 API 網址，並貼 API key）</p>
+
+  <p style="font-size:14px; color:#c80"><b>⚠️ 注意：</b>從 GitHub Pages（https）呼叫 <code>localhost</code> 多數瀏覽器會擋。如果不行，把這個 HTML 檔下載到 Mac 上，雙擊用 Chrome / Safari 直接開（<code>file://</code>），就不會被擋。</p>
 </details>
 
 <div class="card">
   <h2>🔌 連線設定</h2>
+
+  <div class="row" style="margin-bottom:10px">
+    <div>
+      <label>LLM 預設組合</label>
+      <select id="lmPreset">
+        <option value="local">本機 LM Studio（http://localhost:1234）</option>
+        <option value="openai">OpenAI（gpt-4o-mini）</option>
+        <option value="groq">Groq（llama-3.3-70b，快又免費額度）</option>
+        <option value="openrouter">OpenRouter（多家模型）</option>
+        <option value="custom">自訂</option>
+      </select>
+    </div>
+    <div>
+      <label>圖像生成預設組合</label>
+      <select id="dtPreset">
+        <option value="local">本機 Draw Things（http://localhost:7860）</option>
+        <option value="a1111-cloud">雲端 AUTOMATIC1111 / ComfyUI</option>
+        <option value="custom">自訂</option>
+      </select>
+    </div>
+  </div>
+
   <div class="row">
     <div>
-      <label>LM Studio API 網址</label>
+      <label>LLM API 網址</label>
       <input type="text" id="lmUrl" value="http://localhost:1234/v1">
     </div>
     <div>
-      <label>DrawThings API 網址</label>
-      <input type="text" id="dtUrl" value="http://localhost:7860">
+      <label>LLM 模型名稱（雲端 API 必填）</label>
+      <input type="text" id="lmModel" placeholder="留空 = 自動偵測" value="">
+    </div>
+    <div>
+      <label>LLM API Key（雲端 API 必填）</label>
+      <input type="text" id="lmKey" placeholder="sk-... 或留空" value="">
     </div>
   </div>
-  <div style="margin-top:10px">
-    <button id="checkBtn" class="secondary">檢查連線</button>
-    <span id="lmStatus"><span class="status-dot"></span>LM Studio</span>
-    &nbsp;&nbsp;
-    <span id="dtStatus"><span class="status-dot"></span>DrawThings</span>
+
+  <div class="row" style="margin-top:8px">
+    <div>
+      <label>圖像 API 網址</label>
+      <input type="text" id="dtUrl" value="http://localhost:7860">
+    </div>
+    <div>
+      <label>圖像 API Key（雲端才需要）</label>
+      <input type="text" id="dtKey" placeholder="留空 = 不帶 token" value="">
+    </div>
   </div>
+
+  <div style="margin-top:12px">
+    <button id="checkBtn" class="secondary">檢查連線</button>
+    <button id="saveBtn" class="secondary">💾 儲存設定</button>
+    <span id="lmStatus" style="margin-left:10px"><span class="status-dot"></span>LLM</span>
+    &nbsp;&nbsp;
+    <span id="dtStatus"><span class="status-dot"></span>圖像</span>
+  </div>
+  <p class="hint" style="margin-top:8px">設定會存在你瀏覽器的 localStorage，不會上傳。</p>
 </div>
 
 <div class="card">
@@ -156,28 +206,85 @@ function loadVoices() {
 speechSynthesis.onvoiceschanged = loadVoices;
 loadVoices();
 
+// ===== Presets =====
+const LM_PRESETS = {
+  local:      { url: 'http://localhost:1234/v1',           model: '',                       key: '' },
+  openai:     { url: 'https://api.openai.com/v1',          model: 'gpt-4o-mini',            key: '' },
+  groq:       { url: 'https://api.groq.com/openai/v1',     model: 'llama-3.3-70b-versatile', key: '' },
+  openrouter: { url: 'https://openrouter.ai/api/v1',       model: 'meta-llama/llama-3.3-70b-instruct', key: '' },
+  custom:     null
+};
+const DT_PRESETS = {
+  'local':       { url: 'http://localhost:7860', key: '' },
+  'a1111-cloud': { url: 'https://YOUR-RUNPOD-URL.proxy.runpod.net', key: '' },
+  'custom':      null
+};
+
+$('lmPreset').onchange = e => {
+  const p = LM_PRESETS[e.target.value];
+  if (!p) return;
+  $('lmUrl').value = p.url;
+  $('lmModel').value = p.model;
+  if (e.target.value !== 'local') $('lmKey').focus();
+};
+$('dtPreset').onchange = e => {
+  const p = DT_PRESETS[e.target.value];
+  if (!p) return;
+  $('dtUrl').value = p.url;
+};
+
+// ===== localStorage =====
+const SETTINGS_KEYS = ['lmPreset','lmUrl','lmModel','lmKey','dtPreset','dtUrl','dtKey','style','numScenes','rate','voice'];
+function saveSettings() {
+  const obj = {};
+  SETTINGS_KEYS.forEach(k => obj[k] = $(k)?.value);
+  localStorage.setItem('storyVideo:settings', JSON.stringify(obj));
+}
+function loadSettings() {
+  try {
+    const obj = JSON.parse(localStorage.getItem('storyVideo:settings') || '{}');
+    SETTINGS_KEYS.forEach(k => {
+      if ($(k) && obj[k] != null) $(k).value = obj[k];
+    });
+  } catch (_) {}
+}
+$('saveBtn').onclick = () => { saveSettings(); $('saveBtn').textContent = '✔ 已儲存'; setTimeout(() => $('saveBtn').textContent = '💾 儲存設定', 1500); };
+
+function lmHeaders() {
+  const h = {'Content-Type': 'application/json'};
+  const k = $('lmKey').value.trim();
+  if (k) h['Authorization'] = 'Bearer ' + k;
+  return h;
+}
+function dtHeaders() {
+  const h = {'Content-Type': 'application/json'};
+  const k = $('dtKey').value.trim();
+  if (k) h['Authorization'] = 'Bearer ' + k;
+  return h;
+}
+
 // ===== Connection check =====
 async function checkLM() {
   try {
-    const r = await fetch($('lmUrl').value + '/models');
-    if (!r.ok) throw 0;
+    const r = await fetch($('lmUrl').value + '/models', { headers: lmHeaders() });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
     const d = await r.json();
-    const name = d.data?.[0]?.id || '(no model)';
-    $('lmStatus').innerHTML = `<span class="status-dot ok"></span>LM Studio ✔ <span class="hint">${name}</span>`;
+    const name = $('lmModel').value || d.data?.[0]?.id || '(auto)';
+    $('lmStatus').innerHTML = `<span class="status-dot ok"></span>LLM ✔ <span class="hint">${name}</span>`;
     return true;
   } catch (e) {
-    $('lmStatus').innerHTML = `<span class="status-dot err"></span>LM Studio ✘ 無法連線`;
+    $('lmStatus').innerHTML = `<span class="status-dot err"></span>LLM ✘ ${e.message || '連線失敗'}`;
     return false;
   }
 }
 async function checkDT() {
   try {
-    const r = await fetch($('dtUrl').value + '/sdapi/v1/sd-models');
-    if (!r.ok) throw 0;
-    $('dtStatus').innerHTML = `<span class="status-dot ok"></span>DrawThings ✔`;
+    const r = await fetch($('dtUrl').value + '/sdapi/v1/sd-models', { headers: dtHeaders() });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    $('dtStatus').innerHTML = `<span class="status-dot ok"></span>圖像 ✔`;
     return true;
   } catch (e) {
-    $('dtStatus').innerHTML = `<span class="status-dot err"></span>DrawThings ✘ 無法連線`;
+    $('dtStatus').innerHTML = `<span class="status-dot err"></span>圖像 ✘ ${e.message || '連線失敗'}`;
     return false;
   }
 }
@@ -195,33 +302,36 @@ async function splitScript(script, numScenes) {
 [{"narration":"...","image_prompt":"..."}, ...]
 不要加任何說明文字、不要 markdown 包裹。`;
 
+  const body = {
+    messages: [
+      {role: 'system', content: sysPrompt},
+      {role: 'user', content: script}
+    ],
+    temperature: 0.7,
+    max_tokens: 4096
+  };
+  const m = $('lmModel').value.trim();
+  if (m) body.model = m;
+
   const r = await fetch($('lmUrl').value + '/chat/completions', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({
-      messages: [
-        {role: 'system', content: sysPrompt},
-        {role: 'user', content: script}
-      ],
-      temperature: 0.7,
-      max_tokens: 4096
-    })
+    headers: lmHeaders(),
+    body: JSON.stringify(body)
   });
-  if (!r.ok) throw new Error('LM Studio 呼叫失敗：' + r.status);
+  if (!r.ok) throw new Error('LLM 呼叫失敗：' + r.status + ' ' + (await r.text()).slice(0,200));
   const data = await r.json();
   let text = data.choices[0].message.content.trim();
-  // try to extract JSON if model adds extra text
-  const m = text.match(/\[[\s\S]*\]/);
-  if (m) text = m[0];
+  const mm = text.match(/\[[\s\S]*\]/);
+  if (mm) text = mm[0];
   return JSON.parse(text);
 }
 
-// ===== DrawThings: generate image =====
+// ===== Image generation (A1111 / DrawThings compatible) =====
 async function genImage(prompt, stylePrompt) {
   const fullPrompt = `${prompt}, ${stylePrompt}`;
   const r = await fetch($('dtUrl').value + '/sdapi/v1/txt2img', {
     method: 'POST',
-    headers: {'Content-Type': 'application/json'},
+    headers: dtHeaders(),
     body: JSON.stringify({
       prompt: fullPrompt,
       negative_prompt: 'text, watermark, signature, blurry, low quality, distorted',
@@ -232,7 +342,7 @@ async function genImage(prompt, stylePrompt) {
       sampler_name: 'DPM++ 2M Karras'
     })
   });
-  if (!r.ok) throw new Error('DrawThings 呼叫失敗：' + r.status);
+  if (!r.ok) throw new Error('圖像 API 呼叫失敗：' + r.status);
   const data = await r.json();
   return 'data:image/png;base64,' + data.images[0];
 }
@@ -250,9 +360,9 @@ $('runBtn').onclick = async () => {
   $('scenesCard').classList.add('active');
 
   try {
-    log('[1/3] 呼叫 LM Studio 拆腳本...');
+    log('[1/3] 呼叫 LLM 拆腳本...');
     const okLM = await checkLM();
-    if (!okLM) throw new Error('LM Studio 未啟動');
+    if (!okLM) throw new Error('LLM 未連線（檢查 URL / API key / 模型）');
     scenes = await splitScript(script, +$('numScenes').value);
     log(`  ✔ 切成 ${scenes.length} 個場景`, 'ok');
 
@@ -264,9 +374,9 @@ $('runBtn').onclick = async () => {
       $('scenes').appendChild(div);
     });
 
-    log('[3/3] 逐張生圖（DrawThings）...');
+    log('[3/3] 逐張生圖...');
     const okDT = await checkDT();
-    if (!okDT) throw new Error('DrawThings 未啟動');
+    if (!okDT) throw new Error('圖像 API 未連線（檢查 URL / CORS）');
     const style = $('style').value;
     for (let i = 0; i < scenes.length; i++) {
       log(`  生圖 ${i+1}/${scenes.length}...`);
@@ -338,8 +448,16 @@ $('stopBtn').onclick = () => {
   $('stopBtn').disabled = true;
 };
 
-// auto-check on load
-window.addEventListener('load', () => setTimeout(() => $('checkBtn').click(), 500));
+// load saved settings, auto-check
+window.addEventListener('load', () => {
+  loadSettings();
+  setTimeout(() => $('checkBtn').click(), 500);
+});
+// also save on any change
+SETTINGS_KEYS.forEach(k => {
+  const el = $(k);
+  if (el) el.addEventListener('change', saveSettings);
+});
 </script>
 </body>
 </html>
