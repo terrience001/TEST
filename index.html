@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>P2P 視訊通話</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 960px; margin: 20px auto; padding: 0 16px; color: #222; }
+  h1 { margin: 0 0 4px; }
+  .hint { color: #666; font-size: 13px; }
+  .videos { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0; }
+  .video-box { flex: 1 1 380px; }
+  .video-box span { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+  video { width: 100%; aspect-ratio: 4/3; background: #000; border-radius: 8px; }
+  textarea { width: 100%; height: 110px; font-family: ui-monospace, monospace; font-size: 12px; padding: 8px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; }
+  button { padding: 8px 14px; margin: 4px 6px 4px 0; cursor: pointer; border: 1px solid #888; background: #f5f5f5; border-radius: 6px; font-size: 14px; }
+  button:hover:not(:disabled) { background: #e8e8e8; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .step { margin: 14px 0; padding: 14px; border: 1px solid #ddd; border-radius: 8px; background: #fafafa; }
+  .step h2 { margin: 0 0 8px; font-size: 15px; }
+  #status { padding: 8px 12px; background: #eef; border-radius: 6px; font-size: 13px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<h1>P2P 視訊通話</h1>
+<p class="hint">純前端 WebRTC 點對點，無後端。需要 HTTPS（或 localhost）才能存取攝影機。SDP 用複製貼上交換。</p>
+
+<div class="videos">
+  <div class="video-box"><span>本地</span><video id="local" autoplay playsinline muted></video></div>
+  <div class="video-box"><span>遠端</span><video id="remote" autoplay playsinline></video></div>
+</div>
+
+<div id="status">尚未啟動</div>
+
+<div class="step">
+  <h2>步驟 1：啟動鏡頭與麥克風</h2>
+  <button id="startBtn">啟動鏡頭</button>
+</div>
+
+<div class="step">
+  <h2>步驟 2A：我要當「發起方」（Caller）</h2>
+  <div class="row"><button id="createOfferBtn" disabled>① 產生 Offer</button><button id="copyLocalBtn" disabled>複製本地 SDP</button></div>
+  <p class="hint">把下面的 Offer 用任何方式（LINE、Slack、訊息）傳給對方：</p>
+  <textarea id="localSdp" readonly placeholder="按上面的按鈕產生 Offer / Answer"></textarea>
+  <p class="hint">收到對方回傳的 Answer 之後，貼到這裡並按設定：</p>
+  <textarea id="remoteAnswer" placeholder="貼上對方傳回的 Answer JSON"></textarea>
+  <button id="setAnswerBtn" disabled>② 設定對方的 Answer</button>
+</div>
+
+<div class="step">
+  <h2>步驟 2B：我要當「接收方」（Callee）</h2>
+  <p class="hint">貼上對方傳給你的 Offer：</p>
+  <textarea id="remoteOffer" placeholder="貼上對方的 Offer JSON"></textarea>
+  <button id="createAnswerBtn" disabled>產生 Answer（產出後在上面「本地 SDP」框，傳回給對方）</button>
+</div>
+
+<script>
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' }
+];
+
+const $ = id => document.getElementById(id);
+const setStatus = msg => { $('status').textContent = msg; };
+
+let pc = null;
+let localStream = null;
+
+function buildPC() {
+  if (pc) { try { pc.close(); } catch (_) {} }
+  pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+  pc.ontrack = e => { $('remote').srcObject = e.streams[0]; };
+  pc.onconnectionstatechange = () => setStatus('連線狀態：' + pc.connectionState);
+  pc.oniceconnectionstatechange = () => console.log('ICE:', pc.iceConnectionState);
+  if (localStream) {
+    localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+  }
+  return pc;
+}
+
+// 不使用 trickle ICE，等收集完再一次性匯出 SDP，方便手動複製貼上
+function waitIceGatheringDone(pc) {
+  if (pc.iceGatheringState === 'complete') return Promise.resolve();
+  return new Promise(resolve => {
+    const onChange = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', onChange);
+        resolve();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', onChange);
+    setTimeout(resolve, 4000);
+  });
+}
+
+$('startBtn').onclick = async () => {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    $('local').srcObject = localStream;
+    setStatus('鏡頭已啟動');
+    $('createOfferBtn').disabled = false;
+    $('createAnswerBtn').disabled = false;
+  } catch (e) {
+    setStatus('開鏡頭失敗：' + e.message);
+  }
+};
+
+$('createOfferBtn').onclick = async () => {
+  buildPC();
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  setStatus('收集 ICE 候選中…');
+  await waitIceGatheringDone(pc);
+  $('localSdp').value = JSON.stringify(pc.localDescription);
+  $('copyLocalBtn').disabled = false;
+  $('setAnswerBtn').disabled = false;
+  setStatus('Offer 已產生，請傳給對方');
+};
+
+$('createAnswerBtn').onclick = async () => {
+  try {
+    const offer = JSON.parse($('remoteOffer').value);
+    buildPC();
+    await pc.setRemoteDescription(offer);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    setStatus('收集 ICE 候選中…');
+    await waitIceGatheringDone(pc);
+    $('localSdp').value = JSON.stringify(pc.localDescription);
+    $('copyLocalBtn').disabled = false;
+    setStatus('Answer 已產生，請把上方「本地 SDP」傳回給發起方');
+  } catch (e) {
+    setStatus('產生 Answer 失敗：' + e.message);
+  }
+};
+
+$('setAnswerBtn').onclick = async () => {
+  try {
+    const answer = JSON.parse($('remoteAnswer').value);
+    await pc.setRemoteDescription(answer);
+    setStatus('已設定 Answer，等待 P2P 連線建立…');
+  } catch (e) {
+    setStatus('設定 Answer 失敗：' + e.message);
+  }
+};
+
+$('copyLocalBtn').onclick = async () => {
+  try {
+    await navigator.clipboard.writeText($('localSdp').value);
+    setStatus('已複製到剪貼簿');
+  } catch (_) {
+    $('localSdp').select();
+    document.execCommand('copy');
+  }
+};
+</script>
+</body>
+</html>
