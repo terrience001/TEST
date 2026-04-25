@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>故事→影片（本機免費版）</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, "PingFang TC", sans-serif; max-width: 1100px; margin: 20px auto; padding: 0 16px; color: #222; background: #fafafa; }
+  h1 { margin: 0 0 6px; }
+  h2 { font-size: 16px; margin: 16px 0 8px; }
+  .hint { color: #666; font-size: 13px; }
+  .card { background: #fff; border: 1px solid #e0e0e0; border-radius: 10px; padding: 16px; margin: 12px 0; }
+  textarea, input[type=text], input[type=number], select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; font-family: inherit; }
+  textarea { min-height: 140px; resize: vertical; }
+  button { padding: 10px 18px; margin: 4px 6px 4px 0; cursor: pointer; border: 1px solid #3a3a3a; background: #222; color: #fff; border-radius: 6px; font-size: 14px; }
+  button.secondary { background: #fff; color: #222; }
+  button:hover:not(:disabled) { opacity: 0.85; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > div { flex: 1 1 200px; }
+  label { display: block; font-size: 13px; color: #444; margin-bottom: 4px; }
+  #log { background: #111; color: #0f0; font-family: ui-monospace, monospace; font-size: 12px; padding: 10px; height: 140px; overflow: auto; border-radius: 6px; white-space: pre-wrap; }
+  .stage { display: none; }
+  .stage.active { display: block; }
+  .scene { display: flex; gap: 12px; margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 8px; align-items: center; }
+  .scene img { width: 180px; height: 120px; object-fit: cover; background: #000; border-radius: 6px; }
+  .scene .meta { flex: 1; font-size: 13px; }
+  .scene .meta b { display: block; margin-bottom: 4px; }
+  #player { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 10px; overflow: hidden; }
+  #player img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.8s; }
+  #player img.active { opacity: 1; }
+  #subtitle { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 20px; background: linear-gradient(transparent, rgba(0,0,0,0.8)); color: #fff; font-size: 18px; line-height: 1.4; text-shadow: 0 1px 2px #000; }
+  details { margin: 10px 0; }
+  summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+  code { background: #eee; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .ok { color: #080; } .err { color: #c00; } .warn { color: #c80; }
+  .status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #ccc; margin-right: 6px; vertical-align: middle; }
+  .status-dot.ok { background: #4c4; } .status-dot.err { background: #c44; }
+</style>
+</head>
+<body>
+
+<h1>📜 故事腳本 → 影片</h1>
+<p class="hint">本機免費版：LM Studio 拆腳本 · DrawThings 生圖 · Mac 內建語音唸旁白 · 瀏覽器直接播</p>
+
+<details class="card">
+  <summary>📖 第一次使用？點這裡看完整安裝設定步驟</summary>
+  <h2>① 安裝 LM Studio（拆腳本用）</h2>
+  <ol style="font-size:14px; line-height:1.7">
+    <li>到 <a href="https://lmstudio.ai/" target="_blank">lmstudio.ai</a> 下載 Mac 版 .dmg，拖進「應用程式」</li>
+    <li>打開 LM Studio → 左邊搜尋 <code>qwen2.5-7b-instruct</code>（或 <code>llama-3.2-3b-instruct</code> 比較輕）→ 下載 <b>Q4_K_M</b> 版本</li>
+    <li>左邊選 <b>Developer</b>（或 <b>Local Server</b>）分頁 → 上面載入剛下載的模型 → 把 <b>Status</b> 切成 <b>Running</b></li>
+    <li>確認下方顯示 <code>http://localhost:1234</code>（這就是 API 位址，下面要填）</li>
+  </ol>
+
+  <h2>② 安裝 DrawThings（生圖用）</h2>
+  <ol style="font-size:14px; line-height:1.7">
+    <li>Mac App Store 搜尋 <b>Draw Things</b>，免費安裝</li>
+    <li>打開 App，左側會自動下載預設模型（等它跑完，大約 2–4 GB）</li>
+    <li>選單列 <b>Draw Things → Preferences / Settings → Advanced</b> → 開啟 <b>Enable HTTP Server</b>（或叫 <b>API Server</b>），Port 預設 <code>7860</code></li>
+    <li>確認 App 左下顯示 API 已啟動</li>
+  </ol>
+
+  <h2>③ 全部設定完後</h2>
+  <p style="font-size:14px">回到本頁面按下方「檢查連線」按鈕，兩個綠燈都亮就可以開始貼故事了。</p>
+</details>
+
+<div class="card">
+  <h2>🔌 連線設定</h2>
+  <div class="row">
+    <div>
+      <label>LM Studio API 網址</label>
+      <input type="text" id="lmUrl" value="http://localhost:1234/v1">
+    </div>
+    <div>
+      <label>DrawThings API 網址</label>
+      <input type="text" id="dtUrl" value="http://localhost:7860">
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <button id="checkBtn" class="secondary">檢查連線</button>
+    <span id="lmStatus"><span class="status-dot"></span>LM Studio</span>
+    &nbsp;&nbsp;
+    <span id="dtStatus"><span class="status-dot"></span>DrawThings</span>
+  </div>
+</div>
+
+<div class="card">
+  <h2>📝 貼入你的故事腳本</h2>
+  <textarea id="script" placeholder="例：西元 383 年，淝水之戰爆發。前秦苻堅率領號稱百萬大軍南下，意圖一舉消滅東晉……（可以寫幾百字到一兩千字）"></textarea>
+  <div class="row" style="margin-top:10px">
+    <div>
+      <label>切成幾個場景</label>
+      <input type="number" id="numScenes" value="6" min="2" max="20">
+    </div>
+    <div>
+      <label>圖片風格（可改）</label>
+      <input type="text" id="style" value="cinematic historical painting, dramatic lighting, epic composition, highly detailed, oil painting style">
+    </div>
+    <div>
+      <label>旁白語音</label>
+      <select id="voice"></select>
+    </div>
+    <div>
+      <label>語速</label>
+      <input type="number" id="rate" value="1.0" min="0.5" max="2" step="0.1">
+    </div>
+  </div>
+  <div style="margin-top:12px">
+    <button id="runBtn">🎬 開始產生</button>
+    <button id="playBtn" class="secondary" disabled>▶️ 播放影片</button>
+    <button id="stopBtn" class="secondary" disabled>⏹ 停止</button>
+  </div>
+</div>
+
+<div class="card stage" id="logCard">
+  <h2>🧾 執行紀錄</h2>
+  <div id="log"></div>
+</div>
+
+<div class="card stage" id="scenesCard">
+  <h2>🎞 場景預覽</h2>
+  <div id="scenes"></div>
+</div>
+
+<div class="card stage" id="playerCard">
+  <h2>📺 播放</h2>
+  <div id="player"><div id="subtitle"></div></div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const log = (msg, cls='') => {
+  const el = $('log');
+  el.innerHTML += (cls ? `<span class="${cls}">${msg}</span>` : msg) + '\n';
+  el.scrollTop = el.scrollHeight;
+  $('logCard').classList.add('active');
+};
+
+// ===== Voice list =====
+function loadVoices() {
+  const voices = speechSynthesis.getVoices();
+  const sel = $('voice');
+  sel.innerHTML = '';
+  // prefer Chinese voices first
+  const zh = voices.filter(v => /zh|cmn|yue/i.test(v.lang));
+  const others = voices.filter(v => !/zh|cmn|yue/i.test(v.lang));
+  [...zh, ...others].forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    sel.appendChild(opt);
+  });
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
+// ===== Connection check =====
+async function checkLM() {
+  try {
+    const r = await fetch($('lmUrl').value + '/models');
+    if (!r.ok) throw 0;
+    const d = await r.json();
+    const name = d.data?.[0]?.id || '(no model)';
+    $('lmStatus').innerHTML = `<span class="status-dot ok"></span>LM Studio ✔ <span class="hint">${name}</span>`;
+    return true;
+  } catch (e) {
+    $('lmStatus').innerHTML = `<span class="status-dot err"></span>LM Studio ✘ 無法連線`;
+    return false;
+  }
+}
+async function checkDT() {
+  try {
+    const r = await fetch($('dtUrl').value + '/sdapi/v1/sd-models');
+    if (!r.ok) throw 0;
+    $('dtStatus').innerHTML = `<span class="status-dot ok"></span>DrawThings ✔`;
+    return true;
+  } catch (e) {
+    $('dtStatus').innerHTML = `<span class="status-dot err"></span>DrawThings ✘ 無法連線`;
+    return false;
+  }
+}
+$('checkBtn').onclick = async () => {
+  await Promise.all([checkLM(), checkDT()]);
+};
+
+// ===== LLM: split script =====
+async function splitScript(script, numScenes) {
+  const sysPrompt = `你是影片腳本編輯。把使用者給的故事切成 ${numScenes} 個場景，每個場景要有：
+1. narration：中文旁白（約 15–30 字，口語、連貫，像紀錄片旁白）
+2. image_prompt：英文生圖提示詞（精簡、具體、強調畫面構圖與氛圍，不要人名）
+
+只能輸出純 JSON 陣列，格式：
+[{"narration":"...","image_prompt":"..."}, ...]
+不要加任何說明文字、不要 markdown 包裹。`;
+
+  const r = await fetch($('lmUrl').value + '/chat/completions', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      messages: [
+        {role: 'system', content: sysPrompt},
+        {role: 'user', content: script}
+      ],
+      temperature: 0.7,
+      max_tokens: 4096
+    })
+  });
+  if (!r.ok) throw new Error('LM Studio 呼叫失敗：' + r.status);
+  const data = await r.json();
+  let text = data.choices[0].message.content.trim();
+  // try to extract JSON if model adds extra text
+  const m = text.match(/\[[\s\S]*\]/);
+  if (m) text = m[0];
+  return JSON.parse(text);
+}
+
+// ===== DrawThings: generate image =====
+async function genImage(prompt, stylePrompt) {
+  const fullPrompt = `${prompt}, ${stylePrompt}`;
+  const r = await fetch($('dtUrl').value + '/sdapi/v1/txt2img', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      prompt: fullPrompt,
+      negative_prompt: 'text, watermark, signature, blurry, low quality, distorted',
+      width: 1024,
+      height: 576,
+      steps: 20,
+      cfg_scale: 5,
+      sampler_name: 'DPM++ 2M Karras'
+    })
+  });
+  if (!r.ok) throw new Error('DrawThings 呼叫失敗：' + r.status);
+  const data = await r.json();
+  return 'data:image/png;base64,' + data.images[0];
+}
+
+// ===== Pipeline =====
+let scenes = [];
+$('runBtn').onclick = async () => {
+  const script = $('script').value.trim();
+  if (!script) return alert('請先貼入故事腳本');
+  $('runBtn').disabled = true;
+  $('playBtn').disabled = true;
+  scenes = [];
+  $('scenes').innerHTML = '';
+  $('log').innerHTML = '';
+  $('scenesCard').classList.add('active');
+
+  try {
+    log('[1/3] 呼叫 LM Studio 拆腳本...');
+    const okLM = await checkLM();
+    if (!okLM) throw new Error('LM Studio 未啟動');
+    scenes = await splitScript(script, +$('numScenes').value);
+    log(`  ✔ 切成 ${scenes.length} 個場景`, 'ok');
+
+    log('[2/3] 渲染場景列表...');
+    scenes.forEach((s, i) => {
+      const div = document.createElement('div');
+      div.className = 'scene';
+      div.innerHTML = `<img id="img${i}" src="" alt=""><div class="meta"><b>場景 ${i+1}</b><div>📢 ${s.narration}</div><div class="hint">🎨 ${s.image_prompt}</div></div>`;
+      $('scenes').appendChild(div);
+    });
+
+    log('[3/3] 逐張生圖（DrawThings）...');
+    const okDT = await checkDT();
+    if (!okDT) throw new Error('DrawThings 未啟動');
+    const style = $('style').value;
+    for (let i = 0; i < scenes.length; i++) {
+      log(`  生圖 ${i+1}/${scenes.length}...`);
+      const t0 = performance.now();
+      const img = await genImage(scenes[i].image_prompt, style);
+      scenes[i].image = img;
+      document.getElementById('img' + i).src = img;
+      log(`  ✔ 完成 (${Math.round((performance.now()-t0)/1000)} 秒)`, 'ok');
+    }
+    log('🎉 全部完成！點「播放影片」開始看。', 'ok');
+    $('playBtn').disabled = false;
+  } catch (e) {
+    log('✘ ' + e.message, 'err');
+    console.error(e);
+  } finally {
+    $('runBtn').disabled = false;
+  }
+};
+
+// ===== Player =====
+let playing = false;
+function speak(text, voiceName, rate) {
+  return new Promise(resolve => {
+    const u = new SpeechSynthesisUtterance(text);
+    const v = speechSynthesis.getVoices().find(x => x.name === voiceName);
+    if (v) u.voice = v;
+    u.rate = rate;
+    u.onend = resolve;
+    u.onerror = resolve;
+    speechSynthesis.speak(u);
+  });
+}
+
+$('playBtn').onclick = async () => {
+  if (!scenes.length) return;
+  $('playerCard').classList.add('active');
+  $('playBtn').disabled = true;
+  $('stopBtn').disabled = false;
+  playing = true;
+
+  const player = $('player');
+  // clear existing slides
+  player.querySelectorAll('img').forEach(n => n.remove());
+  scenes.forEach((s, i) => {
+    const img = document.createElement('img');
+    img.src = s.image;
+    img.dataset.idx = i;
+    player.insertBefore(img, $('subtitle'));
+  });
+
+  const voice = $('voice').value;
+  const rate = +$('rate').value;
+  for (let i = 0; i < scenes.length && playing; i++) {
+    player.querySelectorAll('img').forEach(n => n.classList.remove('active'));
+    player.querySelectorAll('img')[i].classList.add('active');
+    $('subtitle').textContent = scenes[i].narration;
+    await speak(scenes[i].narration, voice, rate);
+    await new Promise(r => setTimeout(r, 300));
+  }
+  $('subtitle').textContent = playing ? '— 完 —' : '';
+  $('playBtn').disabled = false;
+  $('stopBtn').disabled = true;
+};
+
+$('stopBtn').onclick = () => {
+  playing = false;
+  speechSynthesis.cancel();
+  $('playBtn').disabled = false;
+  $('stopBtn').disabled = true;
+};
+
+// auto-check on load
+window.addEventListener('load', () => setTimeout(() => $('checkBtn').click(), 500));
+</script>
+</body>
+</html>
